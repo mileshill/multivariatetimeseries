@@ -11,12 +11,12 @@ class DataTransforms:
     def __init__(self, file_path=None):
 
         self.file_path = self.validate_file_path(file_path)
+        self.trading_pair = self.get_trading_pair(file_path)
+        self.dir_data = '/home/miles/PycharmProjects/MultivariateTimeSeries/data'
 
         # To be mutated
         self.df = None
         self.df_variance = None
-        self.trading_pair = self.get_trading_pair(file_path)
-        self.dir_data = '/home/miles/PycharmProjects/MultivariateTimeSeries/data'
 
     def __repr__(self):
         basename = os.path.basename(self.file_path)
@@ -150,26 +150,6 @@ class DataTransforms:
         self.write_lstm_data(timesteps=timesteps, dir_data=dir_data)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 if __name__ == '__main__':
-    dt = DataTransforms(file_path='valid.csv')
-
-
-
+    raise NotImplementedError
 
