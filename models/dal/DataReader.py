@@ -1,7 +1,10 @@
 from collections import deque
 import glob
 import numpy as np
+import re
 import os
+
+utc_time_pattern = re.compile(r'_([0-9]+)')
 
 
 class DataReader:
@@ -82,7 +85,8 @@ class DataReader:
 
     @staticmethod
     def load_target_file(file_path):
-        return np.load(file_path)
+        target_utc_time = re.search(utc_time_pattern, file_path).group(1)
+        return {'time': target_utc_time, 'target': np.load(file_path)}
 
     def get_batch(self, is_training=True):
         """
@@ -103,7 +107,7 @@ class DataReader:
                     for step in range(self.batch_size):
                         _feat_path, _tgt_path = file_paths.__next__()
                         features.append(self.load_feature_file(_feat_path))
-                        targets.append(self.load_target_file(_tgt_path))
+                        targets.append(self.load_target_file(_tgt_path).get('target'))
                     yield dict(features=np.array(features), targets=np.array(targets).reshape(-1, 1))
                 except StopIteration:
                     file_paths = self.get_file_list()
@@ -113,10 +117,13 @@ class DataReader:
             testing_files = self.get_file_list(is_training=False)
             features = list()
             targets = list()
+            utctimes = list()
             for _feat_path, _tgt_path in testing_files:
                 features.append(self.load_feature_file(_feat_path))
-                targets.append(self.load_target_file(_tgt_path))
-            yield dict(features=np.array(features), targets=np.array(targets).reshape(-1, 1))
+                _tgt_dict = self.load_target_file(_tgt_path)
+                targets.append(_tgt_dict.get('target'))
+                utctimes.append(_tgt_dict.get('time'))
+            yield dict(features=np.array(features), targets=np.array(targets).reshape(-1, 1), times=np.array(utctimes))
 
     @staticmethod
     def validate_directory(directory, coin, pair='BTC'):
