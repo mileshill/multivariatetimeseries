@@ -23,6 +23,16 @@ class DataReader:
         return f'DataReader<COIN={self.coin}>'
 
     def get_file_list(self, train_size=None, is_training=True):
+        """
+        Pattern matches on the target directory for the given coin/trading pair.
+        File format: coin_base_UTCTargetTime_[feature|target].npy
+
+        Files are matched, imported and sorted (ASCENDING) agaisnt the UTCTargetTime
+
+        Returns
+        -------
+        zip of tuples: (feature_x, target_x), ..., (feature_N, target_N)
+        """
         if train_size is None:
             train_size = self.train_size
 
@@ -41,6 +51,19 @@ class DataReader:
 
     @staticmethod
     def load_feature_file(file_path):
+        """
+        Loads feature file.
+        Drops 'utcTime' column
+        If NAN, fill with 0s.
+
+        Parameters
+        ----------
+        file_path
+
+        Returns
+        -------
+        Loads numpy binary format into numpy array
+        """
         return np.nan_to_num(np.delete(np.load(file_path), 0, axis=1))
 
     @staticmethod
@@ -48,6 +71,13 @@ class DataReader:
         return np.load(file_path)
 
     def get_batch(self, is_training=True):
+        """
+
+        Returns
+        -------
+        yields generator of next file batch. If stop iteration is raised, generator is
+        reloaded with all filepath info. Will continue to produce batch data without raising errors
+        """
         file_paths = self.get_file_list() if is_training else self.get_file_list(is_training=False)
         while True:
             try:
@@ -63,6 +93,18 @@ class DataReader:
 
     @staticmethod
     def validate_directory(directory, coin, pair='BTC'):
+        """
+
+        Parameters
+        ----------
+        directory   directory string
+        coin        coin symbol; Ethereum -> ETH, Digibyte ->, ZCash -> ZEC
+        pair        base trading pair; either BTC, USD, USDT
+
+        Returns
+        -------
+        directory string or raises AssertionError
+        """
         assert(directory is not None)
         if directory[-1] == '/':
             directory = directory[:-1]
