@@ -5,8 +5,22 @@ import os
 
 
 class DataReader:
+    """
+    Provides batching generator for reading in features and targets from numpy binary files
+
+    Parameters
+    ---------
+    directory   full path to directory
+    coin        coin symbol. Bitcoin -> BTC, Ethereum -> ETH
+    pair        base trading pair; either BTC, USD or USDT
+    batch_size  number of records to use per batch
+    train_size  fractional value for number of training records; [0, 0.99]; default=0.8 (80%)
+    """
     def __init__(self, directory=None, coin=None, pair='BTC', batch_size=50, train_size=0.8):
         assert(coin is not None)
+        assert(type(batch_size) is int)
+        assert(type(train_size) is float)
+        assert(0.01 <= train_size <= 0.99)
 
         self.directory = self.validate_directory(directory, coin.upper(), pair)
         self.coin = f'{coin.upper()}_{pair}'
@@ -78,18 +92,31 @@ class DataReader:
         yields generator of next file batch. If stop iteration is raised, generator is
         reloaded with all filepath info. Will continue to produce batch data without raising errors
         """
-        file_paths = self.get_file_list() if is_training else self.get_file_list(is_training=False)
-        while True:
-            try:
-                features = list()
-                targets = list()
-                for step in range(self.batch_size):
-                    _feat_path, _tgt_path = file_paths.__next__()
-                    features.append(self.load_feature_file(_feat_path))
-                    targets.append(self.load_target_file(_tgt_path))
-                yield dict(features=np.array(features), targets=np.array(targets).reshape(-1, 1))
-            except StopIteration:
-                file_paths = self.get_file_list() if is_training else self.get_file_list(is_training=False)
+        if is_training:
+            # Sequentially loop over training data.
+            # If StopIteration, re-initialize `file_path` generator
+            file_paths = self.get_file_list()
+            while True:
+                try:
+                    features = list()
+                    targets = list()
+                    for step in range(self.batch_size):
+                        _feat_path, _tgt_path = file_paths.__next__()
+                        features.append(self.load_feature_file(_feat_path))
+                        targets.append(self.load_target_file(_tgt_path))
+                    yield dict(features=np.array(features), targets=np.array(targets).reshape(-1, 1))
+                except StopIteration:
+                    file_paths = self.get_file_list()
+
+        if not is_training:
+            # Sequentially load all testing files
+            testing_files = self.get_file_list(is_training=False)
+            features = list()
+            targets = list()
+            for _feat_path, _tgt_path in testing_files:
+                features.append(self.load_feature_file(_feat_path))
+                targets.append(self.load_target_file(_tgt_path))
+            yield dict(features=np.array(features), targets=np.array(targets).reshape(-1, 1))
 
     @staticmethod
     def validate_directory(directory, coin, pair='BTC'):
